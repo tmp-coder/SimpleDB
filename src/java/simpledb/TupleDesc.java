@@ -2,6 +2,7 @@ package simpledb;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * TupleDesc describes the schema of a tuple.
@@ -30,10 +31,23 @@ public class TupleDesc implements Serializable {
             this.fieldType = t;
         }
 
+        public boolean equals(Object o){
+            if(this == o)
+                return true;
+            if(o.getClass() != this.getClass())
+                return false;
+            TDItem tdi = (TDItem)o;
+            return this.fieldType.equals(tdi.fieldType) && Objects.equals(tdi.fieldName,this.fieldName);
+        }
+
+        public int hashCode(){
+            return (fieldName==null?0 : fieldName.hashCode()) * 31 + fieldType.hashCode();
+        }
         public String toString() {
             return fieldName + "(" + fieldType + ")";
         }
     }
+
 
     /**
      * @return
@@ -42,10 +56,12 @@ public class TupleDesc implements Serializable {
      * */
     public Iterator<TDItem> iterator() {
         // some code goes here
-        return null;
+        return schema.iterator();
     }
 
     private static final long serialVersionUID = 1L;
+
+    private ArrayList<TDItem> schema;
 
     /**
      * Create a new TupleDesc with typeAr.length fields with fields of the
@@ -60,6 +76,11 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr, String[] fieldAr) {
         // some code goes here
+        assert typeAr.length >=1 :"typeArray must contain at least one entry";
+        assert typeAr.length == fieldAr.length : "the length of type array and field array is not equal";
+        schema = new ArrayList<>(typeAr.length);
+        for(int i=0 ; i< typeAr.length ; ++i)
+            schema.add(new TDItem(typeAr[i],fieldAr[i]));
     }
 
     /**
@@ -72,14 +93,22 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr) {
         // some code goes here
+        assert typeAr.length >=1 :"typeArray must contain at least one entry";
+        schema = new ArrayList<>(typeAr.length);
+        for(int i=0 ; i< typeAr.length; ++i)
+            schema.add(new TDItem(typeAr[i],null));
     }
 
+    /**
+     * private constructor, just for merge easy
+     */
+    private TupleDesc(){}
     /**
      * @return the number of fields in this TupleDesc
      */
     public int numFields() {
         // some code goes here
-        return 0;
+        return schema.size();
     }
 
     /**
@@ -93,7 +122,11 @@ public class TupleDesc implements Serializable {
      */
     public String getFieldName(int i) throws NoSuchElementException {
         // some code goes here
-        return null;
+        try{
+            return schema.get(i).fieldName;
+        }catch (ArrayIndexOutOfBoundsException e){
+            throw new NoSuchElementException(e.getMessage());
+        }
     }
 
     /**
@@ -108,12 +141,16 @@ public class TupleDesc implements Serializable {
      */
     public Type getFieldType(int i) throws NoSuchElementException {
         // some code goes here
-        return null;
+        try{
+            return schema.get(i).fieldType;
+        }catch (ArrayIndexOutOfBoundsException e){
+            throw new NoSuchElementException(e.getMessage());
+        }
     }
 
     /**
      * Find the index of the field with a given name.
-     * 
+     * NOTE: this method is much slow, may consume O(n) time
      * @param name
      *            name of the field.
      * @return the index of the field that is first to have the given name.
@@ -121,8 +158,11 @@ public class TupleDesc implements Serializable {
      *             if no field with a matching name is found.
      */
     public int fieldNameToIndex(String name) throws NoSuchElementException {
-        // some code goes here
-        return 0;
+
+        for(int i=0 ; i< schema.size() ; ++i)
+            if(Objects.equals(name,schema.get(i).fieldName))
+                return i;
+        throw new NoSuchElementException(name + "is not valid fields name");
     }
 
     /**
@@ -131,7 +171,10 @@ public class TupleDesc implements Serializable {
      */
     public int getSize() {
         // some code goes here
-        return 0;
+        return schema.parallelStream()
+            .map(x -> x.fieldType.getLen())
+            .mapToInt(x->x)
+            .sum();
     }
 
     /**
@@ -145,8 +188,11 @@ public class TupleDesc implements Serializable {
      * @return the new TupleDesc
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
-        // some code goes here
-        return null;
+        TupleDesc td = new TupleDesc();
+        td.schema = new ArrayList<>();
+        td.schema.addAll(td1.schema);
+        td.schema.addAll(td2.schema);
+        return td;
     }
 
     /**
@@ -161,14 +207,21 @@ public class TupleDesc implements Serializable {
      */
 
     public boolean equals(Object o) {
-        // some code goes here
-        return false;
+        if(o==null)return false;
+        if(o == this)
+            return true;
+        if(o.getClass() != this.getClass())
+            return false;
+
+        TupleDesc td = (TupleDesc)o;
+        return td.schema.equals(this.schema);
     }
 
     public int hashCode() {
         // If you want to use TupleDesc as keys for HashMap, implement this so
         // that equal objects have equals hashCode() results
-        throw new UnsupportedOperationException("unimplemented");
+
+        return schema.hashCode();
     }
 
     /**
@@ -179,7 +232,9 @@ public class TupleDesc implements Serializable {
      * @return String describing this descriptor.
      */
     public String toString() {
-        // some code goes here
-        return "";
+
+        return schema.stream()
+            .map(x -> String.format("%s(%s)",x.fieldType,x.fieldName))
+            .collect(Collectors.joining(","));
     }
 }

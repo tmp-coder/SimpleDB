@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 /**
  * The Catalog keeps track of all available tables in the database and their
@@ -18,25 +19,58 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Catalog {
 
+    private static class Table{
+        DbFile dbFile;
+        String name;
+        String pkField;
+        public Table(DbFile dbFile, String name,String pkField) {
+            this.dbFile = dbFile;
+            this.pkField = pkField;
+            this.name = name;
+        }
+    }
+
+    /**
+     * map unique table name to universal identifier
+     */
+    private ConcurrentHashMap<String,Integer> nameToIds;
+    /**
+     * map unique table id to table describer;
+     */
+    private ConcurrentHashMap<Integer,Table> idToTables;
+
     /**
      * Constructor.
      * Creates a new, empty catalog.
      */
     public Catalog() {
-        // some code goes here
+        nameToIds = new ConcurrentHashMap<>();
+        idToTables = new ConcurrentHashMap<>();
     }
+
 
     /**
      * Add a new table to the catalog.
      * This table's contents are stored in the specified DbFile.
-     * @param file the contents of the table to add;  file.getId() is the identfier of
+     * @param file the contents of the table to add;  file.getId() is the identifier of
      *    this file/tupledesc param for the calls getTupleDesc and getFile
      * @param name the name of the table -- may be an empty string.  May not be null.  If a name
      * conflict exists, use the last table to be added as the table for a given name.
      * @param pkeyField the name of the primary key field
      */
     public void addTable(DbFile file, String name, String pkeyField) {
-        // some code goes here
+        int id = file.getId();
+        Table inserted = new Table(file,name,pkeyField);
+
+        Integer oldId = nameToIds.get(name);
+        if(oldId==null){// insert new table
+            nameToIds.put(name,id);
+            idToTables.put(id,inserted);
+        }else{// replace with new table
+            nameToIds.replace(name,id);
+            idToTables.remove(oldId);
+            idToTables.put(id,inserted);
+        }
     }
 
     public void addTable(DbFile file, String name) {
@@ -60,7 +94,12 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        if(name == null)
+            throw new NoSuchElementException("Should not find table with null name");
+        Integer id = nameToIds.get(name);
+        if(id == null)
+            throw new NoSuchElementException("table "+name+" not exist");
+        return id;
     }
 
     /**
@@ -70,8 +109,11 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        return getTable(tableid).dbFile.getTupleDesc();
+//        Table ans = idToTables.get(tableid);
+//        if(ans == null)
+//            throw new NoSuchElementException("table "+ tableid+" not exist");
+//        return ans.dbFile.getTupleDesc();
     }
 
     /**
@@ -81,28 +123,38 @@ public class Catalog {
      *     function passed to addTable
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        return getTable(tableid).dbFile;
+//        Table tb = idToTables.get(tableid);
+//        if(tb==null)
+//            throw new NoSuchElementException("table "+ tableid+" not exist");
+//        return tb.dbFile;
+    }
+    private Table getTable(int tableId) throws NoSuchElementException{
+        Table tb = idToTables.get(tableId);
+        if(tb==null)
+            throw new NoSuchElementException("table "+ tableId+" not exist");
+        return tb;
     }
 
     public String getPrimaryKey(int tableid) {
-        // some code goes here
-        return null;
+        return getTable(tableid).pkField;
     }
 
     public Iterator<Integer> tableIdIterator() {
-        // some code goes here
-        return null;
+        return nameToIds.values().iterator();
     }
 
     public String getTableName(int id) {
         // some code goes here
-        return null;
+        return getTable(id).name;
     }
     
-    /** Delete all tables from the catalog */
+    /** Delete all tables from the catalog
+     * NOTE: this not clear data from disk
+     * */
     public void clear() {
-        // some code goes here
+        nameToIds.clear();
+        idToTables.clear();
     }
     
     /**
