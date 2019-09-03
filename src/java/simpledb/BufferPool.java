@@ -2,7 +2,11 @@ package simpledb;
 
 import java.io.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -26,6 +30,32 @@ public class BufferPool {
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
 
+    private static class Frame{ // buffer pool frame
+        Page page;
+//        int pinCount;
+//        ReadWriteLock rwLock;
+//        List<TransactionId> transactionIds;
+
+        public Frame(Page pg){
+            page = pg;
+//            rwLock = new ReentrantReadWriteLock();
+//            transactionIds = new ArrayList<>();
+//            pinCount = 0;
+        }
+
+        public Page getPage(TransactionId tid,Permissions perm){
+//            if(perm == Permissions.READ_ONLY){
+//                rwLock.readLock().lock(); // not release
+//
+//
+//            }
+            return page;
+        }
+    }
+
+    private int MAX_NO_PAGES;
+    private ConcurrentHashMap<PageId,Frame> pageMap;
+
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -33,6 +63,8 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
+        MAX_NO_PAGES = numPages;
+        pageMap = new ConcurrentHashMap<>();
     }
     
     public static int getPageSize() {
@@ -64,10 +96,22 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public  Page getPage(TransactionId tid, PageId pid, Permissions perm) // unimplemented concurrency control
         throws TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+//        return null;
+        Frame frame;
+        if((frame = pageMap.get(pid)) == null){// contained
+            if(pageMap.size() == MAX_NO_PAGES){
+                evictPage();
+            }
+            Page pg = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+            frame = new Frame(pg);
+            pageMap.put(pid,frame);
+            return pg;
+        }
+
+        return pageMap.get(pid).getPage(tid,perm);
     }
 
     /**

@@ -153,5 +153,14 @@ public class Utility {
         }
         return out;
     }
+
+    public static int bitCount(byte b){
+        int ans =0;
+        while (b !=0){
+            ans ++;
+            b &= b -1;
+        }
+        return ans;
+    }
 }
 

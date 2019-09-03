@@ -1,5 +1,7 @@
 package simpledb;
 
+import java.util.Objects;
+
 /**
  * Class representing requested permissions to a relation/file.
  * Private constructor with two static objects READ_ONLY and READ_WRITE that
@@ -23,4 +25,16 @@ public class Permissions {
   public static final Permissions READ_ONLY = new Permissions(0);
   public static final Permissions READ_WRITE = new Permissions(1);
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Permissions that = (Permissions) o;
+    return permLevel == that.permLevel;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(permLevel);
+  }
 }

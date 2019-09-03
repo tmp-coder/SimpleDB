@@ -1,5 +1,6 @@
 package simpledb;
 
+import java.lang.reflect.Array;
 import java.util.*;
 import java.io.*;
 
@@ -41,11 +42,12 @@ public class HeapPage implements Page {
     public HeapPage(HeapPageId id, byte[] data) throws IOException {
         this.pid = id;
         this.td = Database.getCatalog().getTupleDesc(id.getTableId());
-        this.numSlots = getNumTuples();
+        this.numSlots = (BufferPool.getPageSize()*8) / (this.td.getSize()* 8 + 1);
+        int headerSize = (numSlots + 7) / 8;
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
 
         // allocate and read the header slots of this page
-        header = new byte[getHeaderSize()];
+        header = new byte[headerSize];
         for (int i=0; i<header.length; i++)
             header[i] = dis.readByte();
         
@@ -67,7 +69,7 @@ public class HeapPage implements Page {
     */
     private int getNumTuples() {        
         // some code goes here
-        return 0;
+        return (BufferPool.getPageSize()*8) / (this.td.getSize()* 8 + 1); // bad design, maybe td hasn't be constructed
 
     }
 
@@ -78,7 +80,7 @@ public class HeapPage implements Page {
     private int getHeaderSize() {        
         
         // some code goes here
-        return 0;
+        return (7+this.numSlots)/8;//bad design
                  
     }
     
@@ -111,8 +113,7 @@ public class HeapPage implements Page {
      * @return the PageId associated with this page.
      */
     public HeapPageId getId() {
-    // some code goes here
-    throw new UnsupportedOperationException("implement this");
+        return pid;
     }
 
     /**
@@ -282,7 +283,10 @@ public class HeapPage implements Page {
      */
     public int getNumEmptySlots() {
         // some code goes here
-        return 0;
+        int noOne = 0;
+        for(int i=0 ; i< header.length ; ++i)
+            noOne += Utility.bitCount(header[i]);
+        return numSlots - noOne;
     }
 
     /**
@@ -290,7 +294,9 @@ public class HeapPage implements Page {
      */
     public boolean isSlotUsed(int i) {
         // some code goes here
-        return false;
+        int idx = i>>3;
+        int shift = i & 7;
+        return  (header[idx] & (1<<shift))!=0;
     }
 
     /**
@@ -307,8 +313,40 @@ public class HeapPage implements Page {
      */
     public Iterator<Tuple> iterator() {
         // some code goes here
-        return null;
+        return new Itr();
     }
 
+    private class Itr implements Iterator<Tuple>{
+        int tupleIdx =0;
+        int noItems = numSlots - getNumEmptySlots();
+        /**
+         * Returns {@code true} if the iteration has more elements.
+         * (In other words, returns {@code true} if {@link #next} would
+         * return an element rather than throwing an exception.)
+         *
+         * @return {@code true} if the iteration has more elements
+         */
+        @Override
+        public boolean hasNext() {
+            return noItems>0;
+        }
+
+        /**
+         * Returns the next element in the iteration.
+         *
+         * @return the next element in the iteration
+         * @throws NoSuchElementException if the iteration has no more elements
+         */
+        @Override
+        public Tuple next() {
+            if(noItems==0)
+                throw new NoSuchElementException();
+
+            while (tupleIdx<numSlots && !isSlotUsed(tupleIdx))
+                tupleIdx++;
+            noItems--;
+            return tuples[tupleIdx++];
+        }
+    }
 }
 
