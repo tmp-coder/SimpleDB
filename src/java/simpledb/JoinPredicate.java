@@ -9,13 +9,15 @@ import java.io.Serializable;
 public class JoinPredicate implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
+    private int leftIdx;
+    private int rightIdx;
+    private Predicate.Op pop;
     /**
      * Constructor -- create a new predicate over two fields of two tuples.
      * 
-     * @param field1
+     * @param fieldIdx1
      *            The field index into the first tuple in the predicate
-     * @param field2
+     * @param fieldIdx2
      *            The field index into the second tuple in the predicate
      * @param op
      *            The operation to apply (as defined in Predicate.Op); either
@@ -24,8 +26,11 @@ public class JoinPredicate implements Serializable {
      *            Predicate.Op.LESS_THAN_OR_EQ
      * @see Predicate
      */
-    public JoinPredicate(int field1, Predicate.Op op, int field2) {
+    public JoinPredicate(int fieldIdx1, Predicate.Op op, int fieldIdx2) {
         // some code goes here
+        leftIdx = fieldIdx1;
+        rightIdx = fieldIdx2;
+        pop = op;
     }
 
     /**
@@ -36,24 +41,24 @@ public class JoinPredicate implements Serializable {
      */
     public boolean filter(Tuple t1, Tuple t2) {
         // some code goes here
-        return false;
+        return t1.getField(leftIdx).compare(this.pop,t2.getField(this.rightIdx));
     }
     
     public int getField1()
     {
         // some code goes here
-        return -1;
+        return leftIdx;
     }
     
     public int getField2()
     {
         // some code goes here
-        return -1;
+        return rightIdx;
     }
     
     public Predicate.Op getOperator()
     {
         // some code goes here
-        return null;
+        return this.pop;
     }
 }
