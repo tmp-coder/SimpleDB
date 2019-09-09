@@ -1,12 +1,21 @@
 package simpledb;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
+
 /**
  * Knows how to compute some aggregate over a set of StringFields.
  */
 public class StringAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+    private int gbField;
+    private Type gbFieldType;
+    private int agField;
+//    private Op op;
 
+    private HashMap<Field,Integer> gbAns;
     /**
      * Aggregate constructor
      * @param gbfield the 0-based index of the group-by field in the tuple, or NO_GROUPING if there is no grouping
@@ -18,14 +27,26 @@ public class StringAggregator implements Aggregator {
 
     public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
         // some code goes here
+        if (what!=Op.COUNT)
+            throw new IllegalArgumentException();
+        this.agField = afield;
+        this.gbField = gbfield;
+        this.gbFieldType = gbfieldtype;
+//        this.op = what;
+        this.gbAns = new HashMap<>();
     }
 
     /**
+     * NOTE: op must be COUNT
      * Merge a new tuple into the aggregate, grouping as indicated in the constructor
      * @param tup the Tuple containing an aggregate field and a group-by field
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
+        Field k = this.gbField == NO_GROUPING? new IntField(gbAns.size()) : tup.getField(this.gbField);
+
+        int val = gbAns.getOrDefault(k,0);
+        gbAns.put(k,val+1);
     }
 
     /**
@@ -37,8 +58,31 @@ public class StringAggregator implements Aggregator {
      *   aggregate specified in the constructor.
      */
     public OpIterator iterator() {
-        // some code goes here
-        throw new UnsupportedOperationException("please implement me for lab2");
+        return new TupleIterator(ansTupleDesc(),()->{return iterateTuple();});
+    }
+    public TupleDesc ansTupleDesc(){
+        return this.gbField == NO_GROUPING? new TupleDesc(new Type[]{Type.INT_TYPE}) : new TupleDesc(new Type[]{this.gbFieldType,Type.INT_TYPE});
+    }
+    public Iterator<Tuple> iterateTuple(){
+        if(this.gbField == NO_GROUPING)
+            return this.gbAns.values().stream()
+                .map(x -> {
+                    TupleDesc td = new TupleDesc(new Type[]{Type.INT_TYPE});
+                    Tuple t = new Tuple(td);
+                    t.setField(0,new IntField(x));
+                    return t;
+                }).iterator();
+        else{
+            return this.gbAns.entrySet().stream()
+                .map(x ->{
+                    TupleDesc td = new TupleDesc(new Type[]{this.gbFieldType,Type.INT_TYPE});
+                    Tuple t = new Tuple(td);
+                    t.setField(0,x.getKey());
+                    t.setField(1,new IntField(x.getValue()));
+                    return t;
+                }).iterator();
+        }
     }
 
-}
+
+ }

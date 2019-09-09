@@ -8,7 +8,57 @@ import java.io.Serializable;
  */
 public interface Aggregator extends Serializable {
     static final int NO_GROUPING = -1;
+    public static class Stat{
+        private int cnt;
+        private int val;
 
+        public Stat() {
+            cnt = -1;// indicate not initialize
+        }
+        public Stat(int val){
+            this.val = val;
+            cnt=1;
+        }
+        private void init(Op op){
+            cnt = 0;
+            switch (op){
+                case MIN:
+                    val = Integer.MAX_VALUE;
+                    break;
+                case MAX:
+                    val = Integer.MIN_VALUE;
+                    break;
+                default:
+                    val =0;
+            }
+        }
+        public void insert(Op op,int val){
+            if(cnt ==-1)
+                init(op);
+            switch (op){
+                case MAX:
+                    if(this.val < val)
+                        this.val = val;
+                    break;
+                case MIN:
+                    if(this.val > val)
+                        this.val = val;
+                    break;
+                default:
+                    this.val += val;
+                    cnt++;
+            }
+        }
+
+        public int rtAns(Op op){
+            switch (op){
+                case AVG:
+                    return this.val/this.cnt;
+                default:
+                    return this.val;
+            }
+        }
+    }
     /**
      * SUM_COUNT and SC_AVG will
      * only be used in lab7, you are not required
