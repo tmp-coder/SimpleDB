@@ -113,4 +113,21 @@ public class Tuple implements Serializable {
         // some code goes here
         this.td = td;// NOTE : fields not modify
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Tuple tuple = (Tuple) o;
+        return td.equals(tuple.td) &&
+            Arrays.equals(fields, tuple.fields) &&
+            Objects.equals(rid, tuple.rid);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(td, rid);
+        result = 31 * result + Arrays.hashCode(fields);
+        return result;
+    }
 }

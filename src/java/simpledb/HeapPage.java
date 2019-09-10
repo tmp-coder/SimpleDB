@@ -1,5 +1,7 @@
 package simpledb;
 
+import com.sun.istack.internal.NotNull;
+
 import java.lang.reflect.Array;
 import java.util.*;
 import java.io.*;
@@ -13,16 +15,18 @@ import java.io.*;
  *
  */
 public class HeapPage implements Page {
-
+    private static final int byteSize = 8;
     final HeapPageId pid;
     final TupleDesc td;
     final byte header[];
     final Tuple tuples[];
-    final int numSlots;
+    final int numSlots; // legal Slots number
 
     byte[] oldData;
     private final Byte oldDataLock=new Byte((byte)0);
-
+    private Queue<Integer> emptySlots; // cache for empty slots
+    private TransactionId dirty;
+    private boolean isDirty;
     /**
      * Create a HeapPage from a set of bytes of data read from disk.
      * The format of a HeapPage is a set of header bytes indicating
@@ -48,8 +52,15 @@ public class HeapPage implements Page {
 
         // allocate and read the header slots of this page
         header = new byte[headerSize];
+        emptySlots = new LinkedList<>();
+
         for (int i=0; i<header.length; i++)
+        {
             header[i] = dis.readByte();
+            for(int j=0 ; j<byteSize ; ++j)
+                if(j+i*byteSize < numSlots && ((header[i]>>j) &1) ==0)// empty
+                    emptySlots.add(j+i*byteSize);
+        }
         
         tuples = new Tuple[numSlots];
         try{
@@ -62,6 +73,7 @@ public class HeapPage implements Page {
         dis.close();
 
         setBeforeImage();
+        isDirty = false;
     }
 
     /** Retrieve the number of tuples on this page.
@@ -241,11 +253,23 @@ public class HeapPage implements Page {
      *   that it is no longer stored on any page.
      * @throws DbException if this tuple is not on this page, or tuple slot is
      *         already empty.
-     * @param t The tuple to delete
+     * @param t @notNull The tuple to delete
      */
-    public void deleteTuple(Tuple t) throws DbException {
+    public void deleteTuple(@NotNull Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
+
+        RecordId rid = t.getRecordId();
+        PageId pid = rid.getPageId();
+        int slotIdx = rid.getTupleNumber();
+
+        if(pid.equals(this.pid) && isSlotUsed(slotIdx) && tuples[slotIdx].equals(t))
+        {
+            markSlotUsed(slotIdx,false);
+            emptySlots.add(slotIdx);
+        }
+        else
+            throw new DbException("no this tuple");
     }
 
     /**
@@ -255,9 +279,16 @@ public class HeapPage implements Page {
      *         is mismatch.
      * @param t The tuple to add.
      */
-    public void insertTuple(Tuple t) throws DbException {
+    public void insertTuple(@NotNull Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
+        if(this.getNumEmptySlots()==0 || !t.getTupleDesc().equals(this.td))
+            throw new DbException("not legal tuple");
+        int slot = emptySlots.remove();
+        // set pid
+        t.setRecordId(new RecordId(this.pid,slot));
+        tuples[slot] = t;
+        markSlotUsed(slot,true);
     }
 
     /**
@@ -267,6 +298,8 @@ public class HeapPage implements Page {
     public void markDirty(boolean dirty, TransactionId tid) {
         // some code goes here
 	// not necessary for lab1
+        this.dirty = tid;
+        isDirty = dirty;
     }
 
     /**
@@ -275,7 +308,9 @@ public class HeapPage implements Page {
     public TransactionId isDirty() {
         // some code goes here
 	// Not necessary for lab1
-        return null;      
+        if(isDirty)
+            return dirty;
+        else return null;
     }
 
     /**
@@ -283,10 +318,7 @@ public class HeapPage implements Page {
      */
     public int getNumEmptySlots() {
         // some code goes here
-        int noOne = 0;
-        for(int i=0 ; i< header.length ; ++i)
-            noOne += Utility.bitCount(header[i]);
-        return numSlots - noOne;
+        return emptySlots.size();
     }
 
     /**
@@ -300,11 +332,16 @@ public class HeapPage implements Page {
     }
 
     /**
-     * Abstraction to fill or clear a slot on this page.
+     * Abstraction to fill or clear a slot on this page. method name is anbigious
      */
     private void markSlotUsed(int i, boolean value) {
         // some code goes here
         // not necessary for lab1
+        int idx = i>>3;
+        int bit = i & 0x7;
+        if(value)
+            header[idx] |= (1<<bit);
+        else header[idx] &= ~(1<<bit);
     }
 
     /**

@@ -15,7 +15,7 @@ public class TupleDesc implements Serializable {
     public static class TDItem implements Serializable {
 
         private static final long serialVersionUID = 1L;
-
+        private static final String DEFAULT_FIELD_NAME = "null";
         /**
          * The type of the field
          * */
@@ -34,10 +34,11 @@ public class TupleDesc implements Serializable {
         public boolean equals(Object o){
             if(this == o)
                 return true;
-            if(o.getClass() != this.getClass())
+            if(o == null ||o.getClass() != this.getClass())
                 return false;
             TDItem tdi = (TDItem)o;
-            return this.fieldType.equals(tdi.fieldType) && Objects.equals(tdi.fieldName,this.fieldName);
+//            return this.fieldType.equals(tdi.fieldType) && Objects.equals(tdi.fieldName,this.fieldName);
+            return this.fieldType.equals(tdi.fieldType);
         }
 
         public int hashCode(){
