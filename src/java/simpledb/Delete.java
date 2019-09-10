@@ -10,6 +10,9 @@ public class Delete extends Operator {
 
     private static final long serialVersionUID = 1L;
 
+    private TransactionId tid;
+    private OpIterator child;
+    private boolean delFlag = false;
     /**
      * Constructor specifying the transaction that this delete belongs to as
      * well as the child to read from.
@@ -21,23 +24,32 @@ public class Delete extends Operator {
      */
     public Delete(TransactionId t, OpIterator child) {
         // some code goes here
+        tid = t;
+        this.child = child;
     }
 
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return new TupleDesc(new Type[]{Type.INT_TYPE});
     }
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
+        super.open();
+        child.open();
     }
 
     public void close() {
         // some code goes here
+        super.close();
+        child.close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
-        // some code goes here
+//        // some code goes here
+//        child.rewind();
+        close();
+        open();
     }
 
     /**
@@ -50,19 +62,38 @@ public class Delete extends Operator {
      * @see BufferPool#deleteTuple
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
-        // some code goes here
-        return null;
+
+        if (delFlag)
+            return null;
+        delFlag = true;
+        Tuple ret = new Tuple(this.getTupleDesc());
+        int noDel = 0;
+        BufferPool bf = Database.getBufferPool();
+        while (child.hasNext()) {
+            noDel++;
+            try {
+                bf.deleteTuple(this.tid, child.next());
+            } catch (IOException e) {
+                throw new DbException("IO error");
+//                e.printStackTrace();
+            }
+        }
+        ret.setField(0, new IntField(noDel));
+        return ret;
     }
 
     @Override
     public OpIterator[] getChildren() {
         // some code goes here
-        return null;
+        return new OpIterator[]{child};
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
         // some code goes here
+        assert children.length == 1 : "the length of children must be 1";
+
+        child = children[0];
     }
 
 }

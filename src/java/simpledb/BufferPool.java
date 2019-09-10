@@ -1,12 +1,8 @@
 package simpledb;
 
-import java.io.*;
-
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -177,6 +173,9 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        ArrayList<Page> pgs = Database.getCatalog().getDatabaseFile(tableId).insertTuple(tid, t);
+        for (Page pg : pgs)
+            pageMap.put(pg.getId(), new Frame(pg));
     }
 
     /**
@@ -196,6 +195,9 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        ArrayList<Page> pgs = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId()).deleteTuple(tid, t);
+        for (Page pg : pgs)
+            pageMap.put(pg.getId(), new Frame(pg));
     }
 
     /**

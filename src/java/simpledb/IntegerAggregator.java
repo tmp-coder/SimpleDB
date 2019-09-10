@@ -1,9 +1,7 @@
 package simpledb;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 /**
  * Knows how to compute some aggregate over a set of IntFields.
@@ -52,15 +50,13 @@ public class IntegerAggregator implements Aggregator {
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
         Integer agVal = ((IntField)tup.getField(this.agField)).getValue();
-        if(NO_GROUPING == this.gbField){
-            gbAns.put(new IntField(gbAns.size()),new Stat(agVal));
-        }
-        else{
-            Field k = tup.getField(this.gbField);
-            if(!gbAns.containsKey(k))
-                gbAns.put(k,new Stat());
-            gbAns.get(k).insert(this.gbOp,agVal);
-        }
+
+        Field k = null;
+        if (this.gbField != NO_GROUPING)
+            k = tup.getField(this.gbField);
+        if (!gbAns.containsKey(k))
+            gbAns.put(k, new Stat());
+        gbAns.get(k).insert(this.gbOp, agVal);
     }
 
     /**

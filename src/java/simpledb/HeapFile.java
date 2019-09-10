@@ -1,7 +1,10 @@
 package simpledb;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * HeapFile is an implementation of a DbFile that stores a collection of tuples
@@ -17,6 +20,8 @@ public class HeapFile implements DbFile {
 
     private File file;
     private TupleDesc td;
+
+    private int insertPgNo;
     /**
      * Constructs a heap file backed by the specified file.
      * 
@@ -98,6 +103,10 @@ public class HeapFile implements DbFile {
     public void writePage(Page page) throws IOException {
         // some code goes here
         // not necessary for lab1
+        byte[] pgData = page.getPageData();
+        BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file, true));
+        bos.write(pgData);
+        bos.close();
     }
 
     /**
@@ -110,20 +119,76 @@ public class HeapFile implements DbFile {
         return (int)(file.length() /pageSize);
     }
 
-    // see DbFile.java for javadocs
+    /**
+     * Inserts the specified tuple to the file on behalf of transaction.
+     * This method will acquire a lock on the affected pages of the file, and
+     * may block until the lock can be acquired.
+     *
+     * @param tid The transaction performing the update
+     * @param t   The tuple to add.  This tuple should be updated to reflect that
+     *            it is now stored in this file.
+     * @return An ArrayList contain the pages that were modified
+     * @throws DbException if the tuple cannot be added
+     * @throws IOException if the needed file can't be read/written
+     */
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for lab1
+//        Database.getBufferPool().getPage(tid,)
+
+        HeapPage pg = null;
+        boolean found = false;
+        for (int np = this.numPages(), bound = this.insertPgNo + this.numPages(); this.insertPgNo < bound; ++this.insertPgNo) {
+            PageId pid = new HeapPageId(getId(), this.insertPgNo % np);
+            pg = (HeapPage) Database.getBufferPool().getPage(tid, pid, Permissions.READ_WRITE);
+            if (pg.getNumEmptySlots() > 0) {
+                pg.insertTuple(t);
+                pg.markDirty(true, tid);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            // no page, insert
+            pg = new HeapPage(new HeapPageId(getId(), numPages()), HeapPage.createEmptyPageData());
+            pg.insertTuple(t);
+            this.writePage(pg);
+        }
+
+        return new ArrayList<>(Arrays.asList(pg));
     }
 
-    // see DbFile.java for javadocs
+    /**
+     * Removes the specified tuple from the file on behalf of the specified
+     * transaction.
+     * This method will acquire a lock on the affected pages of the file, and
+     * may block until the lock can be acquired.
+     *
+     * @param tid The transaction performing the update
+     * @param t   The tuple to delete.  This tuple should be updated to reflect that
+     *            it is no longer stored on any page.
+     * @return An ArrayList contain the pages that were modified
+     * @throws DbException if the tuple cannot be deleted or is not a member
+     *                     of the file
+     */
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for lab1
+        int id = getId();
+        HeapPage delPg = null;
+        boolean find = false;
+        for (int i = 0, np = numPages(); i < np; ++i) {
+            delPg = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(id, i), Permissions.READ_WRITE);
+            try {
+                delPg.deleteTuple(t);
+                find = true;
+                break;
+            } catch (DbException e) {
+                //pass
+            }
+        }
+        if (!find)
+            throw new DbException("not delete");
+        delPg.markDirty(true, tid);
+        return new ArrayList<>(Arrays.asList(delPg));
     }
 
     /**

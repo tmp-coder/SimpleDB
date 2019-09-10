@@ -2,7 +2,6 @@ package simpledb;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 
 /**
  * Knows how to compute some aggregate over a set of StringFields.
@@ -43,7 +42,7 @@ public class StringAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
-        Field k = this.gbField == NO_GROUPING? new IntField(gbAns.size()) : tup.getField(this.gbField);
+        Field k = this.gbField == NO_GROUPING ? null : tup.getField(this.gbField);
 
         int val = gbAns.getOrDefault(k,0);
         gbAns.put(k,val+1);
@@ -83,6 +82,4 @@ public class StringAggregator implements Aggregator {
                 }).iterator();
         }
     }
-
-
  }

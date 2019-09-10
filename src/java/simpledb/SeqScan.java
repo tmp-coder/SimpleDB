@@ -1,6 +1,6 @@
 package simpledb;
 
-import java.util.*;
+import java.util.NoSuchElementException;
 
 /**
  * SeqScan is an implementation of a sequential scan access method that reads
@@ -104,7 +104,7 @@ public class SeqScan implements OpIterator {
         String prefix = tableAlias == null? "null" : tableAlias;
         for(int i=0 ; i< noFields ; ++i){
             types[i] = rawTd.getFieldType(i);
-            fieldNames[i] = prefix+rawTd.getFieldName(i);
+            fieldNames[i] = prefix + '.' + rawTd.getFieldName(i);
         }
 
         return new TupleDesc(types,fieldNames);
