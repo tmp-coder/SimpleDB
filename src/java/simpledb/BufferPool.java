@@ -221,9 +221,6 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
         syncLRUMap.remove(pid); // not need flushPage
-//        if (f != null) {
-//            flushPage(f.page);
-//        }
     }
 
     /**
@@ -246,9 +243,6 @@ public class BufferPool {
 
     private static class Frame { // buffer pool frame
         Page page;
-//        int pinCount;
-//        ReadWriteLock rwLock;
-//        List<TransactionId> transactionIds;
 
         public Frame(Page pg) {
             page = pg;
@@ -259,11 +253,6 @@ public class BufferPool {
         }
 
         public Page getPage(TransactionId tid, Permissions perm) {
-//            if(perm == Permissions.READ_ONLY){
-//                rwLock.readLock().lock(); // not release
-//
-//
-//            }
             return page;
         }
     }
