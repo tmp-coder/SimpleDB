@@ -103,10 +103,27 @@ public class HeapFile implements DbFile {
     public void writePage(Page page) throws IOException {
         // some code goes here
         // not necessary for lab1
+        int pgNo = page.getId().getPageNumber();
+        if (pgNo == numPages())
+            appendPage(page);
+        else {
+            try (RandomAccessFile raf = new RandomAccessFile(file, "w")) {
+                long offset = BufferPool.getPageSize();
+                raf.seek(offset);
+                raf.write(page.getPageData());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void appendPage(Page page) {
         byte[] pgData = page.getPageData();
-        BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file, true));
-        bos.write(pgData);
-        bos.close();
+        try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file, true))) {
+            bos.write(pgData);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**

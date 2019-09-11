@@ -220,10 +220,10 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
-        Frame f = syncLRUMap.remove(pid);
-        if (f != null) {
-            flushPage(f.page);
-        }
+        syncLRUMap.remove(pid); // not need flushPage
+//        if (f != null) {
+//            flushPage(f.page);
+//        }
     }
 
     /**
